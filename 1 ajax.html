@@ -109,7 +109,7 @@
   </div>
 
   <h2>hx-delete</h2>
-  <form id="hxDeleteForm" class="border spacing" hx-delete="/1 ajax.php" hx-trigger="submit consume" hx-target="#hxDeleteTarget" hx-indicator="#hxDeleteIndicator" hx-disabled-elt="#hxDeleteForm button">
+  <form id="hxDeleteForm" class="border spacing" hx-delete="/1 ajax.php" hx-trigger="submit consume" hx-confirm="Are you sure you wish to delete the message?" hx-target="#hxDeleteTarget" hx-indicator="#hxDeleteIndicator" hx-disabled-elt="#hxDeleteForm button">
     <label>
       Name:
       <input type="text" name="name" placeholder="名称" required />
@@ -125,6 +125,7 @@
       服务器只有在接收到不为空的name且和缓存的值相符时才会删除缓存的数据.
       hx-indicator可以指定一个元素的id, 在执行请求时向该元素添加htmx-request类.
       hx-disabled-elt可以指定一个或多个元素的选择器, 触发后禁用这些元素, 请求结束后恢复.
+      hx-confirm会在触发事件时弹出确认对话框, 如果用户取消则不执行请求.
       服务器代码预设了1秒等待时间, 以便看到htmx-indicator的效果.
     </pre>
   </div>
