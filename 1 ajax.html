@@ -1,0 +1,135 @@
+<html>
+
+<head>
+  <title>HTMX - 1. AJAX</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+
+<body>
+  <h1>Use HTMX to perform AJAX</h1>
+  <h2>hx-get</h2>
+  <div class="clickable border spacing" hx-get="/1 ajax hx-get target.html" hx-trigger="click consume">
+    hx-get: Click me to load via AJAX immediately after page is loaded...
+  </div>
+  <div>
+    <h3>笔记</h3>
+    <pre>
+      HTMX默认不会吃掉你的鼠标点击事件, 如果要嵌套的话必须要hx-trigger="click consume".
+      consume会自动调用event.stopPropagation()来阻止事件传向上层元素.
+      如果没consume, 那么嵌套的hx-get会先触发并按预期填充内容, 然后外层的hx-get会再触发一次, 覆盖全部嵌套的内容.
+      如果点击上层元素而不是嵌套元素里的click me元素, 那么上层元素的hx-get会触发并覆盖之前嵌套内容.
+    </pre>
+  </div>
+
+  <h2>hx-post</h2>
+  <div class="clickable border spacing" hx-post="/1 ajax.php" hx-trigger="click consume" hx-target="#hxPostTarget" hx-vals='js:{"value": document.getElementById("hxPostTarget").textContent.trim()}'>
+    hx-post: Click me to ask server to add 1!
+  </div>
+  <div id="hxPostTarget" class="border spacing">
+    0
+  </div>
+  <div>
+    <h3>笔记</h3>
+    <pre>
+      hx-post单独用时, hx-vals可以用js:前缀来动态生成提交的数据.
+      这里的js:前缀表示后面的内容是JavaScript代码, 代码的返回值会被当作hx-vals的值.
+      hx-target可以指定响应内容插入的位置.
+      这里的hx-post会把hx-vals的value值发送给服务器, 服务器会把value值加1后返回, 然后插入到hx-target指定的位置.
+      虽然上层没有别的HTMX属性, 但这里的hx-post也用了consume来阻止事件冒泡.
+    </pre>
+  </div>
+
+  <h2>hx-put</h2>
+  <form id="hxPutForm" class="border spacing" hx-put="/1 ajax.php" hx-trigger="submit consume" hx-target="#hxPutTarget">
+    <label>
+      Name:
+      <input type="text" name="name" required />
+    </label>
+    <br />
+    <label>
+      Message:
+      <input type="text" name="message" required />
+    </label>
+    <br />
+    <button type="submit" class="clickable">hx-put: Submit form to server</button>
+  </form>
+  <button hx-get="/1 ajax.php?message=1" hx-target="#hxPutTarget">Check message</button>
+  <div id="hxPutTarget" class="border spacing"></div>
+  <div>
+    <h3>笔记</h3>
+    <pre>
+      hx系列ajax属性都可以直接用在form元素上, name就是键, 属性的value就是值.
+      默认触发事件是submit, 这里点提交按钮即可触发.
+      hx-put会把form里的所有name/value对打包成请求体发送给服务器.
+      有个细节, PHP本身不支持PUT方法, 没有$_PUT全局变量, 需要读取php://input手动解析输入.
+      <code>
+        parse_str(file_get_contents('php://input'), $_PUT);
+        var_dump($_PUT);
+      </code>
+    </pre>
+  </div>
+
+  <h2>hx-patch</h2>
+  <div class="border spacing">
+    <input type="text" id="hxPatchName" name="name" placeholder="修改名称" /><br>
+    <input type="text" id="hxPatchMessage" name="message" placeholder="修改消息" /><br>
+    <div class="clickable border spacing" hx-patch="/1 ajax.php" hx-trigger="click consume" hx-target="#hxPatchTarget" hx-include="#hxPatchName, #hxPatchMessage">
+      hx-patch: Send value via PATCH using hx-include
+      <div class="htmx-indicator">Patching with hx-include...</div>
+    </div>
+    <div class="clickable border spacing" hx-patch="/1 ajax.php" hx-trigger="click consume" hx-target="#hxPatchTarget" hx-vals='js:{...(function() {
+        let vals = {};
+        if (document.getElementById("hxPatchName").value.trim() !== "") {
+          vals.name = document.getElementById("hxPatchName").value.trim();
+        }
+        if (document.getElementById("hxPatchMessage").value.trim() !== "") {
+          vals.message = document.getElementById("hxPatchMessage").value.trim();
+        }
+        console.log("Submitting via hx-patch:", vals);
+        return vals;
+      })()}'>
+      hx-patch: Send value via PATCH using hx-vals
+      <div class="htmx-indicator">Patching with hx-vals...</div>
+    </div>
+  </div>
+  <div id="hxPatchTarget" class="border spacing"></div>
+  <div>
+    <h3>笔记</h3>
+    <pre>
+      服务器只有在接收到不为空的name或message时才会更新对应的session值, 这是HTML的PATCH方法的设计用途.
+      不过实践中基本上都是用POST搞RPC调用.
+      这里通过hx-include指定了要包含在请求中的input元素, 不然不会提交任何数据.
+      hx-vals用js:前缀动态生成提交的数据, 主要用于消除空值.
+      使用hx-include时会提交默认值, 没法消除空值.
+      在元素内的带有htmx-indicator类的元素会在请求进行中显示, 请求结束后隐藏.
+      原理是hx-patch的元素会获得htmx-request类, HTMX自带CSS用于隐藏htmx-indicator.
+      因为htmx-indicator通过opacity来控制显示和隐藏, 所以它会占据文本空间, 不会导致页面上下跳动, 但也可能导致排版问题.
+      服务器代码预设了1秒等待时间, 以便看到htmx-indicator的效果.
+    </pre>
+  </div>
+
+  <h2>hx-delete</h2>
+  <form id="hxDeleteForm" class="border spacing" hx-delete="/1 ajax.php" hx-trigger="submit consume" hx-target="#hxDeleteTarget" hx-indicator="#hxDeleteIndicator" hx-disabled-elt="#hxDeleteForm button">
+    <label>
+      Name:
+      <input type="text" name="name" placeholder="名称" required />
+    </label>
+    <br />
+    <button type="submit" class="clickable">hx-delete: Delete message with matching name</button>
+  </form>
+  <div id="hxDeleteIndicator" class="htmx-indicator">Deleting message...</div>
+  <div id="hxDeleteTarget" class="border spacing"></div>
+  <div>
+    <h3>笔记</h3>
+    <pre>
+      服务器只有在接收到不为空的name且和缓存的值相符时才会删除缓存的数据.
+      hx-indicator可以指定一个元素的id, 在执行请求时向该元素添加htmx-request类.
+      hx-disabled-elt可以指定一个或多个元素的选择器, 触发后禁用这些元素, 请求结束后恢复.
+      服务器代码预设了1秒等待时间, 以便看到htmx-indicator的效果.
+    </pre>
+  </div>
+</body>
+<!-- 这里是未缩减版, 方便开发中调试 -->
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.js" integrity="sha384-ksKjJrwjL5VxqAkAZAVOPXvMkwAykMaNYegdixAESVr+KqLkKE8XBDoZuwyWVUDv" crossorigin="anonymous"></script>
+
+</html>
